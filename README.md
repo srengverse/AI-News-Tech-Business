@@ -58,6 +58,12 @@ FACEBOOK_PAGE_ID=your_facebook_page_id
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 TELEGRAM_CHANNEL_ID=your_telegram_channel_id
 PORT=8080
+DASHBOARD_HOST=127.0.0.1
+DASHBOARD_TOKEN=replace_with_a_long_random_secret
+REQUEST_TIMEOUT_SECONDS=15
+MAX_IMAGE_BYTES=8388608
+MAX_ARTICLE_BYTES=2097152
+MAX_FEED_BYTES=4194304
 FONT_PATH=Battambang-Bold.ttf
 LOGO_PATH=logo.png
 ```
@@ -68,11 +74,11 @@ LOGO_PATH=logo.png
 python3 news.py
 ```
 
-Dashboard នឹងបើកតាម `http://localhost:8080`។ កុំ commit `.env` ឬ credentials ពិតទៅក្នុង Git repository។
+Dashboard នឹងបើកតាម `http://localhost:8080`។ សម្រាប់ production គួររក្សា `DASHBOARD_HOST=127.0.0.1` ហើយដាក់ dashboard នៅពីក្រោយ reverse proxy/TLS។ ប្រសិនបើត្រូវ bind ទៅ network interface សាធារណៈ ត្រូវកំណត់ `DASHBOARD_TOKEN` ជា random secret វែង ហើយ endpoint manual trigger នឹងទាមទារ `X-Dashboard-Token`។ កុំ commit `.env` ឬ credentials ពិតទៅក្នុង Git repository។
 
 ## Database
 
-ដំណើរការ SQL ក្នុង `SUPABASE_SCHEMA.sql` តាម Supabase SQL Editor មុនពេល run bot។ Schema រក្សាទុកអត្ថបទដែលបានបង្ហោះ និង retry queue សម្រាប់កំហុសដែលអាចកើតមាន។
+ដំណើរការ SQL ក្នុង `SUPABASE_SCHEMA.sql` តាម Supabase SQL Editor មុនពេល run bot។ Schema រក្សាទុកអត្ថបទដែលបានបង្ហោះ និង retry queue សម្រាប់កំហុសដែលអាចកើតមាន។ Migration នឹងបន្ថែម `category` និង `link` ទៅ table ចាស់ដោយសុវត្ថិភាព ហើយបើក Row Level Security ដើម្បីបិទ anonymous/public database access។
 
 ## ឯកសារសំខាន់ៗ
 
