@@ -1,0 +1,9 @@
+google-genai
+supabase
+Pillow
+feedparser
+beautifulsoup4
+aiohttp
+python-dotenv
+pytz
+python-dateutil

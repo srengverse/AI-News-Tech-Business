@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+nohup.out
+bot.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Firebase
+firebase_key.json
+firebase-key.json
+serviceAccountKey.json
+*-firebase-*.json
+
+
+# Cache
+image_cache/

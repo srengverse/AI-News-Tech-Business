@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Bot Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #131825;
+            --bg-card: #1a1f35;
+            --bg-card-hover: #1f2640;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-error: #ef4444;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #2d3548;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+            --glass-bg: rgba(26, 31, 53, 0.7);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #0f1420 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header with Glassmorphism */
+        header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            position: sticky;
+            top: 1rem;
+            z-index: 100;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--accent-success);
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--accent-success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-success);
+            border-radius: 50%;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--accent-primary);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-success), var(--accent-primary));
+            border-radius: 10px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stat-subtext {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Category Badges */
+        .category-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin: 0 0.25rem 0.25rem 0;
+        }
+
+        .category-badge.finance {
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid #14b8a6;
+            color: #14b8a6;
+        }
+
+        .category-badge.technology {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid var(--accent-secondary);
+            color: var(--accent-secondary);
+        }
+
+        .category-badge.business {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid #f59e0b;
+            color: #f59e0b;
+        }
+
+        /* Section */
+        .section {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .refresh-btn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+
+        .posts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .post-item {
+            background: var(--bg-secondary);
+            padding: 1.25rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .post-item:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-primary);
+            transform: translateX(8px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .post-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .post-meta {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .post-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid var(--accent-primary);
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--accent-primary);
+        }
+
+        .platform-badge.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--accent-success);
+            color: var(--accent-success);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--accent-primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Error State */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-error);
+            color: var(--accent-error);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            header {
+                position: relative;
+                top: 0;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div>
+                    <h1> AI Finance & Tech News Bot</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Finance, Technology & Business monitoring dashboard</p>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <div class="status-badge">
+                        <span class="status-dot"></span>
+                        <span id="statusText">Online</span>
+                    </div>
+                    <button class="refresh-btn" onclick="triggerRun()"
+                        style="background: linear-gradient(135deg, var(--accent-success), var(--accent-primary));">
+                         Run Now
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Total Posts</span>
+                    <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1);"></div>
+                </div>
+                <div class="stat-value" id="totalPosts">--</div>
+                <div class="stat-subtext">All time</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Today</span>
+                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1);"></div>
+                </div>
+                <div class="stat-value" id="todayPosts">--</div>
+                <div class="stat-subtext">Last 24 hours</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">This Week</span>
+                    <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1);"></div>
+                </div>
+                <div class="stat-value" id="weekPosts">--</div>
+                <div class="stat-subtext">Last 7 days</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Success Rate</span>
+                    <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1);"></div>
+                </div>
+                <div class="stat-value" id="successRate">--</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="successProgress" style="width: 0%"></div>
+                </div>
+                <div class="stat-subtext">Facebook and Telegram posts</div>
+            </div>
+        </div>
+
+        <!-- Category Breakdown -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title"> News Categories</h2>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <span class="category-badge finance"> Finance: <strong id="financeCount">0</strong></span>
+                <span class="category-badge technology"> Technology: <strong id="technologyCount">0</strong></span>
+                <span class="category-badge business"> Business: <strong id="businessCount">0</strong></span>
+            </div>
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.875rem;">
+                Monitoring 9 finance, technology and business sources across 3 categories
+            </p>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title"> Recent Posts</h2>
+                <button class="refresh-btn" onclick="loadStats()"> Refresh</button>
+            </div>
+            <div id="postsContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading posts...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title"> API Usage</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div
+                    style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;"> Gemini API
+                    </div>
+                    <div style="font-size: 1.5rem; font-weight: 600;" id="geminiUsage">--</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Requests today</div>
+                </div>
+                <div
+                    style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;"> Facebook
+                        API</div>
+                    <div style="font-size: 1.5rem; font-weight: 600;" id="facebookUsage">--</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Calls today</div>
+                </div>
+                <div
+                    style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;"> Telegram
+                        API</div>
+                    <div style="font-size: 1.5rem; font-weight: 600;" id="telegramUsage">--</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Calls today</div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Last updated: <span id="lastUpdate">--</span></p>
+                    <p style="margin-top: 0.5rem; opacity: 0.6;">AI Finance & Tech News Bot Dashboard v4.0</p>
+        </footer>
+    </div>
+
+    <script>
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch stats');
+                }
+
+                const data = await response.json();
+
+                // Animate stats update
+                animateValue('totalPosts', 0, data.total_all || 0, 800);
+                animateValue('todayPosts', 0, data.total_today || 0, 800);
+                animateValue('weekPosts', 0, data.total_week || 0, 800);
+
+                // Calculate success rate
+                const successRate = data.total_today > 0
+                    ? Math.round((data.success_count / data.total_today) * 100)
+                    : 0;
+                animateValue('successRate', 0, successRate, 800, '%');
+
+                // Animate progress bar
+                setTimeout(() => {
+                    document.getElementById('successProgress').style.width = successRate + '%';
+                }, 100);
+
+                // Update category counts
+                const categories = data.category_counts || {};
+                document.getElementById('financeCount').textContent = categories.finance || 0;
+                document.getElementById('technologyCount').textContent = categories.technology || 0;
+                document.getElementById('businessCount').textContent = categories.business || 0;
+
+                // Update API usage
+                document.getElementById('geminiUsage').textContent =
+                    data.rate_limits?.gemini?.last_day || 0;
+                document.getElementById('facebookUsage').textContent =
+                    data.rate_limits?.facebook?.last_day || 0;
+                document.getElementById('telegramUsage').textContent =
+                    data.rate_limits?.telegram?.last_day || 0;
+
+                // Render recent posts
+                renderPosts(data.recent_posts || []);
+
+                // Update timestamp
+                const updateTime = new Date(data.timestamp || Date.now());
+                document.getElementById('lastUpdate').textContent = updateTime.toLocaleString();
+
+                // Update status
+                document.getElementById('statusText').textContent = 'Online';
+
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                document.getElementById('postsContainer').innerHTML = `
+                    <div class="error-message">
+                         Failed to load dashboard data. Please check if the bot is running.
+                    </div>
+                `;
+                document.getElementById('statusText').textContent = 'Offline';
+            }
+        }
+
+        async function triggerRun() {
+            const btn = document.querySelector('button[onclick="triggerRun()"]');
+            const originalText = btn.textContent;
+
+            try {
+                btn.disabled = true;
+                btn.textContent = ' Starting...';
+
+                const response = await fetch('/api/trigger', { method: 'POST' });
+
+                if (response.ok) {
+                    btn.textContent = ' Started!';
+                    setTimeout(() => {
+                        loadStats(); // Reload stats to see if anything changed immediately
+                    }, 2000);
+                } else {
+                    throw new Error('Failed to trigger');
+                }
+            } catch (error) {
+                console.error('Trigger error:', error);
+                btn.textContent = ' Failed';
+                btn.style.background = 'var(--accent-error)';
+            } finally {
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    btn.style.background = 'linear-gradient(135deg, var(--accent-success), var(--accent-primary))';
+                }, 3000);
+            }
+        }
+
+        function animateValue(id, start, end, duration, suffix = '') {
+            const element = document.getElementById(id);
+            const range = end - start;
+            const increment = range / (duration / 16);
+            let current = start;
+
+            const timer = setInterval(() => {
+                current += increment;
+                if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+                    current = end;
+                    clearInterval(timer);
+                }
+                element.textContent = Math.round(current) + suffix;
+            }, 16);
+        }
+
+        function renderPosts(posts) {
+            const container = document.getElementById('postsContainer');
+
+            if (!posts || posts.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                        No posts yet
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="posts-list">
+                    ${posts.map(post => `
+                        <div class="post-item">
+                            <div class="post-title">${escapeHtml(post.title || 'Untitled')}</div>
+                            <div class="post-meta">
+                                <div class="post-meta-item">
+                                     ${escapeHtml(post.source || 'Unknown')}
+                                </div>
+                                <div class="post-meta-item">
+                                     ${formatDate(post.posted_at)}
+                                </div>
+                                <div class="post-meta-item">
+                                    <span class="category-badge ${escapeHtml(post.category || 'business')}">${escapeHtml(post.category || 'business')}</span>
+                                </div>
+                                <div class="post-meta-item">
+                                    ${post.facebook
+                    ? '<span class="platform-badge success"> FB</span>'
+                    : '<span class="platform-badge"> FB</span>'}
+                                    ${post.telegram
+                    ? '<span class="platform-badge success"> TG</span>'
+                    : '<span class="platform-badge"> TG</span>'}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'Recently';
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+
+            if (diff < 60) return 'Just now';
+            if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + ' hrs ago';
+            return Math.floor(diff / 86400) + ' days ago';
+        }
+
+        // Load stats on page load
+        loadStats();
+
+        // Manual refresh is used to avoid unnecessary API and database reads
+        // Click the refresh button to manually update stats
+    </script>
+</body>
+
+</html>
