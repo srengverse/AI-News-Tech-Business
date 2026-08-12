@@ -4,7 +4,7 @@
 
 ## សមត្ថភាពសំខាន់
 
-- តាមដានប្រភព RSS ចំនួន ៩ ក្នុង ៣ ប្រភេទ៖ Finance, Technology និង Business។
+- តាមដានប្រភព RSS ចំនួន ១៦ ក្នុង ៣ ប្រភេទ៖ Finance, Technology និង Business។ ក្នុងនោះមានប្រភពក្នុងស្រុកកម្ពុជា ដូចជា NBC, Open Development Cambodia និង Khmer Times។
 - ស្រង់រូបភាពពី RSS media, `og:image`, `twitter:image` ឬ HTML របស់អត្ថបទ។
 - ប្រើ Google Gemini ដើម្បីបង្កើតចំណងជើង សេចក្តីសង្ខេប និងទស្សនៈវិភាគជាភាសាខ្មែរ។
 - បង្កើត poster មាន theme ខុសគ្នាតាមប្រភេទព័ត៌មាន និងមាន branding របស់ project។
@@ -19,11 +19,11 @@
 
 | ប្រភេទ | ប្រភព |
 |---|---|
-| Finance | CNBC Finance, Yahoo Finance, MarketWatch |
-| Technology | TechCrunch, MIT Technology Review, Google AI Blog |
-| Business | CNBC Business, Entrepreneur, Forbes Business |
+| Finance | CNBC Finance, Yahoo Finance, MarketWatch, NBC Cambodia News, NBC Cambodia Press, ODC Banking & Financial Services |
+| Technology | TechCrunch, MIT Technology Review, Google AI Blog, ODC Cambodia Fintech, Khmer Times Technology |
+| Business | CNBC Business, Entrepreneur, Forbes Business, Khmer Times Business, ODC Cambodia Economy |
 
-ប្រភពអាចកែប្រែបាននៅក្នុង `NEWS_SOURCES` ក្នុង `news.py`។ ប្រព័ន្ធនឹងត្រួតពិនិត្យ keyword ដើម្បីបន្ថយអត្ថបទដែលមិនពាក់ព័ន្ធនឹង finance, technology ឬ business។
+ប្រភពអាចកែប្រែបាននៅក្នុង `NEWS_SOURCES` ក្នុង `news.py`។ ប្រព័ន្ធនឹងត្រួតពិនិត្យ keyword ដើម្បីបន្ថយអត្ថបទដែលមិនពាក់ព័ន្ធនឹង finance, technology ឬ business។ ប្រភពផ្លូវការរបស់ NBC ត្រូវបានរាយនៅលើ [ទំព័រ RSS/Social Media របស់ NBC][3]។ ប្រភព Khmer Times និង ODC ប្រើ category/tag RSS endpoints របស់គេហទំព័រផ្លូវការ។
 
 ## Tech Stack
 
@@ -97,3 +97,4 @@ Project នេះត្រូវបានកែសម្រួលពី [`srengv
 
 [1]: https://github.com/srengverse/bot_News "Original bot_News repository"
 [2]: https://github.com/srengverse/AI-News-Tech-Business "AI-News-Tech-Business repository"
+[3]: https://www.nbc.gov.kh/english/about_the_bank/social_network.php "National Bank of Cambodia RSS feeds"

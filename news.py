@@ -457,17 +457,24 @@ NEWS_SOURCES = {
     "finance": [
         {"name": "CNBC Finance", "url": "https://www.cnbc.com/id/10000664/device/rss/rss.html"},
         {"name": "Yahoo Finance", "url": "https://finance.yahoo.com/news/rssindex"},
-        {"name": "MarketWatch", "url": "https://feeds.marketwatch.com/marketwatch/topstories/"}
+        {"name": "MarketWatch", "url": "https://feeds.marketwatch.com/marketwatch/topstories/"},
+        {"name": "NBC Cambodia News", "url": "http://www.nbc.org.kh/rss/rss_feed.php?feed=news"},
+        {"name": "NBC Cambodia Press", "url": "http://www.nbc.org.kh/rss/rss_feed.php?feed=press"},
+        {"name": "ODC Banking & Financial Services", "url": "https://opendevelopmentcambodia.net/en/category/economy-and-commerce/banking-and-financial-services/feed/"}
     ],
     "technology": [
         {"name": "TechCrunch", "url": "https://techcrunch.com/feed/"},
         {"name": "MIT Technology Review", "url": "https://www.technologyreview.com/feed/"},
-        {"name": "Google AI Blog", "url": "https://blog.google/technology/ai/rss/"}
+        {"name": "Google AI Blog", "url": "https://blog.google/technology/ai/rss/"},
+        {"name": "ODC Cambodia Fintech", "url": "https://opendevelopmentcambodia.net/en/tag/financial-technology-fintech/feed/"},
+        {"name": "Khmer Times Technology", "url": "https://www.khmertimeskh.com/tag/technology/feed/"}
     ],
     "business": [
         {"name": "CNBC Business", "url": "https://www.cnbc.com/id/10001147/device/rss/rss.html"},
         {"name": "Entrepreneur", "url": "https://www.entrepreneur.com/latest.rss"},
-        {"name": "Forbes Business", "url": "https://www.forbes.com/business/feed/"}
+        {"name": "Forbes Business", "url": "https://www.forbes.com/business/feed/"},
+        {"name": "Khmer Times Business", "url": "https://www.khmertimeskh.com/category/business/feed/"},
+        {"name": "ODC Cambodia Economy", "url": "https://opendevelopmentcambodia.net/en/category/economy-and-commerce/feed/"}
     ]
 }
 
