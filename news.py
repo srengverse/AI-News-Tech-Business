@@ -12,8 +12,11 @@ import ipaddress
 import logging
 import io
 import re
+import shutil
 import socket
+import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -78,11 +81,18 @@ ICT = pytz.timezone('Asia/Phnom_Penh')
 FONT_PATH = Path(os.getenv("FONT_PATH", str(BASE_DIR / "Battambang-Bold.ttf"))).expanduser()
 LOGO_PATH = Path(os.getenv("LOGO_PATH", str(BASE_DIR / "logo.png"))).expanduser()
 DASHBOARD_TOKEN = os.getenv("DASHBOARD_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TTS_MODEL = os.getenv("TTS_MODEL", "gpt-4o-mini-tts")
+TTS_VOICE = os.getenv("TTS_VOICE", "alloy")
+MEDIA_MODE = os.getenv("MEDIA_MODE", "reel").lower()
+if MEDIA_MODE not in {'reel', 'poster'}:
+    MEDIA_MODE = 'poster'
 DASHBOARD_HOST = os.getenv("DASHBOARD_HOST", "127.0.0.1")
 REQUEST_TIMEOUT_SECONDS = env_float("REQUEST_TIMEOUT_SECONDS", 15.0, 3.0, 60.0)
 MAX_IMAGE_BYTES = env_int("MAX_IMAGE_BYTES", 8 * 1024 * 1024, 64 * 1024, 20 * 1024 * 1024)
 MAX_ARTICLE_BYTES = env_int("MAX_ARTICLE_BYTES", 2 * 1024 * 1024, 64 * 1024, 10 * 1024 * 1024)
 MAX_FEED_BYTES = env_int("MAX_FEED_BYTES", 4 * 1024 * 1024, 64 * 1024, 10 * 1024 * 1024)
+MAX_REEL_BYTES = env_int("MAX_REEL_BYTES", 50 * 1024 * 1024, 1 * 1024 * 1024, 200 * 1024 * 1024)
 
 # Global Event for Manual Trigger
 scan_event = asyncio.Event()
@@ -151,6 +161,10 @@ def check_environment():
         logging.warning("Telegram publishing is disabled; Facebook-only mode is active")
     if not DASHBOARD_TOKEN:
         logging.warning("DASHBOARD_TOKEN is not configured; manual trigger endpoint is unauthenticated")
+    if MEDIA_MODE == 'reel' and not OPENAI_API_KEY:
+        logging.warning("MEDIA_MODE=reel but OPENAI_API_KEY is missing; poster fallback is active")
+    if MEDIA_MODE == 'reel' and not shutil.which('ffmpeg'):
+        logging.warning("MEDIA_MODE=reel but ffmpeg is unavailable; poster fallback is active")
     logging.info(f" Environment verified. Gemini Keys: {len(GEMINI_API_KEYS)}")
 
 check_environment()
@@ -514,7 +528,146 @@ class AIService:
             raise
         return None
 
+# ===========================  REEL GENERATION ===========================
+def build_khmer_narration(article: dict) -> str:
+    """Create a concise Khmer script suitable for a 30–60 second news reel."""
+    title = str(article.get('title_kh') or article.get('title') or '').strip()
+    summary = str(article.get('summary_kh') or '').strip()
+    insight = str(article.get('insight') or '').strip()
+    script = f"ព័ត៌មានសំខាន់៖ {title}។ {summary}។ ទស្សនៈសំខាន់៖ {insight}។"
+    return re.sub(r'\s+', ' ', script).strip()[:1800]
+
+
+class ReelService:
+    @staticmethod
+    async def generate_voiceover(article: dict) -> Optional[bytes]:
+        if not OPENAI_API_KEY:
+            logging.warning("OPENAI_API_KEY is not configured; reel voice-over is disabled")
+            return None
+        script = build_khmer_narration(article)
+        if not script:
+            return None
+        instructions = (
+            "Speak in Khmer with a clear Cambodian news-presenter voice. "
+            "Use a warm, professional and factual tone, with natural pauses and steady pacing. "
+            "Read only the Khmer script after the colon; do not translate or add commentary:"
+        )
+        payload = {
+            'model': TTS_MODEL,
+            'voice': TTS_VOICE,
+            'input': script,
+            'response_format': 'mp3',
+            'instructions': instructions,
+        }
+        try:
+            timeout = aiohttp.ClientTimeout(total=60)
+            headers = {'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post('https://api.openai.com/v1/audio/speech', headers=headers, json=payload) as response:
+                    if response.status != 200:
+                        logging.warning("TTS request failed with HTTP %s", response.status)
+                        return None
+                    audio = await response.content.read(MAX_REEL_BYTES)
+                    if not audio:
+                        return None
+                    return audio
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as exc:
+            logging.warning("Khmer voice-over generation failed: %s", exc)
+            return None
+
+    @staticmethod
+    async def render(poster_bytes: bytes, voiceover: bytes) -> Optional[bytes]:
+        if not poster_bytes or not voiceover or not shutil.which('ffmpeg'):
+            logging.warning("Reel render unavailable; ffmpeg or media input is missing")
+            return None
+        try:
+            with tempfile.TemporaryDirectory(prefix='aitb-reel-', dir=BASE_DIR) as temp_dir:
+                poster_path = Path(temp_dir) / 'poster.jpg'
+                audio_path = Path(temp_dir) / 'voiceover.mp3'
+                output_path = Path(temp_dir) / 'reel.mp4'
+                poster_path.write_bytes(poster_bytes)
+                audio_path.write_bytes(voiceover)
+                vf = ('scale=1080:1920:force_original_aspect_ratio=decrease,'
+                      'pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,format=yuv420p')
+                command = [
+                    'ffmpeg', '-y', '-loglevel', 'error', '-loop', '1', '-i', str(poster_path),
+                    '-i', str(audio_path), '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast',
+                    '-tune', 'stillimage', '-c:a', 'aac', '-b:a', '128k', '-shortest',
+                    '-movflags', '+faststart', str(output_path)
+                ]
+                await asyncio.to_thread(
+                    subprocess.run, command, check=True, timeout=120,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+                data = output_path.read_bytes()
+                return data if 0 < len(data) <= MAX_REEL_BYTES else None
+        except (OSError, subprocess.SubprocessError, asyncio.TimeoutError) as exc:
+            logging.warning("Reel rendering failed: %s", exc)
+            return None
+
+
 # ===========================  SOCIAL POSTING ===========================
+async def post_facebook_reel(art: dict, video: bytes) -> bool:
+    if not FB_ACCESS_TOKEN or not FB_PAGE_ID or not video or len(video) > MAX_REEL_BYTES:
+        return False
+    description = f"{art.get('title_kh', '')}\n\n{art.get('summary_kh', '')}\n\n{art.get('insight', '')}\n\n{art.get('hashtags', '')} #aitbnews"[:63000]
+    base_url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/video_reels"
+    try:
+        timeout = aiohttp.ClientTimeout(total=120)
+        headers = {'Authorization': f'OAuth {FB_ACCESS_TOKEN}'}
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(base_url, data={
+                'access_token': FB_ACCESS_TOKEN,
+                'upload_phase': 'START',
+                'file_size': str(len(video)),
+            }) as start_response:
+                start_payload = await start_response.json(content_type=None)
+                if start_response.status >= 300 or not start_payload.get('video_id'):
+                    logging.warning("Facebook Reel start failed: HTTP %s", start_response.status)
+                    return False
+                video_id = start_payload['video_id']
+                upload_url = start_payload.get('upload_url')
+                if not upload_url:
+                    logging.warning("Facebook Reel start did not return an upload URL")
+                    return False
+            async with session.post(upload_url, headers={**headers, 'offset': '0', 'file_size': str(len(video))}, data=video) as upload_response:
+                if upload_response.status >= 300:
+                    logging.warning("Facebook Reel upload failed: HTTP %s", upload_response.status)
+                    return False
+            async with session.post(base_url, data={
+                'access_token': FB_ACCESS_TOKEN,
+                'upload_phase': 'FINISH',
+                'video_id': video_id,
+                'video_state': 'PUBLISHED',
+                'description': description,
+            }) as finish_response:
+                payload = await finish_response.json(content_type=None)
+                return finish_response.status < 300 and bool(payload.get('success'))
+    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, TypeError) as exc:
+        logging.warning("Facebook Reel publish failed: %s", exc)
+        return False
+
+
+async def post_telegram_video(art: dict, video: bytes) -> bool:
+    if not TG_BOT_TOKEN or not TG_CHANNEL_ID or not video or len(video) > MAX_REEL_BYTES:
+        return False
+    msg = f"{art.get('title_kh', '')}\n\n{art.get('summary_kh', '')}\n\n{art.get('insight', '')}\n\n{art.get('hashtags', '')}"[:1024]
+    try:
+        timeout = aiohttp.ClientTimeout(total=120)
+        url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendVideo"
+        data = FormData()
+        data.add_field('chat_id', TG_CHANNEL_ID)
+        data.add_field('caption', msg)
+        data.add_field('video', video, filename='aitb-reel.mp4', content_type='video/mp4')
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, data=data) as response:
+                payload = await response.json(content_type=None)
+                return response.status < 300 and bool(payload.get('ok'))
+    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as exc:
+        logging.warning("Telegram Reel publish failed: %s", exc)
+        return False
+
+
 async def post_facebook(art: dict, img: Optional[bytes]) -> bool:
     if not FB_ACCESS_TOKEN or not FB_PAGE_ID or not is_safe_public_url(art.get('link')):
         return False
@@ -713,8 +866,17 @@ async def worker():
                             img_data = await ImageService.download(img_url) if img_url else None
                             poster = await ImageService.generate_poster(img_data, final['title_kh'], final['source'], final.get('sentiment')=='Negative', cat)
 
-                            fb_ok = await post_facebook(final, poster or img_data)
-                            tg_ok = await post_telegram(final, poster or img_data)
+                            reel = None
+                            if MEDIA_MODE == 'reel' and OPENAI_API_KEY:
+                                voiceover = await ReelService.generate_voiceover(final)
+                                reel = await ReelService.render(poster, voiceover) if voiceover else None
+                            if reel:
+                                fb_ok = await post_facebook_reel(final, reel)
+                                tg_ok = await post_telegram_video(final, reel)
+                            else:
+                                # Preserve the existing poster workflow when TTS/rendering is unavailable.
+                                fb_ok = await post_facebook(final, poster or img_data)
+                                tg_ok = await post_telegram(final, poster or img_data)
 
                             if fb_ok or tg_ok:
                                 await DatabaseService.save_post(

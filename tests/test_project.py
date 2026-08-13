@@ -43,6 +43,14 @@ class ProjectSmokeTests(unittest.TestCase):
             self.assertRegex(self.source_text, rf'"{category}"\s*:\s*\[')
         self.assertEqual(len(re.findall(r'\{"name":', self.source_text)), 16)
 
+    def test_reel_voiceover_pipeline_is_present(self):
+        for name in ("build_khmer_narration", "generate_voiceover", "render", "post_facebook_reel", "post_telegram_video"):
+            self.assertIn(name, self.source_text)
+        self.assertIn("MEDIA_MODE", self.source_text)
+        self.assertIn("OPENAI_API_KEY", self.source_text)
+        self.assertIn("ffmpeg", self.source_text)
+        self.assertIn("Speak in Khmer", self.source_text)
+
     def test_security_controls_are_present(self):
         self.assertIn("is_safe_public_url", self.source_text)
         self.assertIn("MAX_IMAGE_BYTES", self.source_text)

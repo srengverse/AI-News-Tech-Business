@@ -7,7 +7,7 @@
 - តាមដានប្រភព RSS ចំនួន ១៦ ក្នុង ៣ ប្រភេទ៖ Finance, Technology និង Business។ ក្នុងនោះមានប្រភពក្នុងស្រុកកម្ពុជា ដូចជា NBC, Open Development Cambodia និង Khmer Times។
 - ស្រង់រូបភាពពី RSS media, `og:image`, `twitter:image` ឬ HTML របស់អត្ថបទ។
 - ប្រើ Google Gemini ដើម្បីបង្កើតចំណងជើង សេចក្តីសង្ខេប និងទស្សនៈវិភាគជាភាសាខ្មែរ។
-- បង្កើត poster មាន theme ខុសគ្នាតាមប្រភេទព័ត៌មាន និងមាន branding របស់ project។
+- បង្កើត vertical video reel `1080x1920` ជាមួយ Khmer AI voice-over, poster visual និង branding របស់ project។ ប្រសិនបើ TTS ឬ ffmpeg មិនអាចប្រើបាន ប្រព័ន្ធនឹង fallback ទៅ poster workflow ចាស់។
 - ផ្សព្វផ្សាយទៅ Facebook Page និង Telegram Channel។
 - រក្សាទុកអត្ថបទដែលបានបង្ហោះក្នុង Supabase និងការពារការបង្ហោះស្ទួនតាម article ID និង fingerprint។
 - មាន dashboard សម្រាប់មើលស្ថិតិ និងបញ្ជា scan ដោយដៃ។
@@ -33,6 +33,8 @@
 - Supabase PostgreSQL
 - Feedparser និង BeautifulSoup4
 - Pillow សម្រាប់ poster generation
+- FFmpeg សម្រាប់ reel rendering និង audio/video muxing
+- OpenAI Speech API សម្រាប់ Khmer voice-over
 
 ## ដំឡើង និងដំណើរការ
 
@@ -64,6 +66,11 @@ REQUEST_TIMEOUT_SECONDS=15
 MAX_IMAGE_BYTES=8388608
 MAX_ARTICLE_BYTES=2097152
 MAX_FEED_BYTES=4194304
+MAX_REEL_BYTES=52428800
+MEDIA_MODE=reel
+OPENAI_API_KEY=your_openai_api_key
+TTS_MODEL=gpt-4o-mini-tts
+TTS_VOICE=alloy
 FONT_PATH=Battambang-Bold.ttf
 LOGO_PATH=logo.png
 ```
@@ -74,7 +81,7 @@ LOGO_PATH=logo.png
 python3 news.py
 ```
 
-Dashboard នឹងបើកតាម `http://localhost:8080`។ សម្រាប់ production គួររក្សា `DASHBOARD_HOST=127.0.0.1` ហើយដាក់ dashboard នៅពីក្រោយ reverse proxy/TLS។ ប្រសិនបើត្រូវ bind ទៅ network interface សាធារណៈ ត្រូវកំណត់ `DASHBOARD_TOKEN` ជា random secret វែង ហើយ endpoint manual trigger នឹងទាមទារ `X-Dashboard-Token`។ កុំ commit `.env` ឬ credentials ពិតទៅក្នុង Git repository។
+Dashboard នឹងបើកតាម `http://localhost:8080`។ Reel mode ត្រូវការ `ffmpeg` នៅក្នុង system និង `OPENAI_API_KEY`។ `MEDIA_MODE=reel` នឹងព្យាយាមបង្កើត Khmer voice-over និង publish MP4 ទៅ Facebook Reels/Telegram video; បើមិនអាចបង្កើតបាន វានឹង fallback ទៅ poster ដោយស្វ័យប្រវត្តិ។ សម្រាប់ production គួររក្សា `DASHBOARD_HOST=127.0.0.1` ហើយដាក់ dashboard នៅពីក្រោយ reverse proxy/TLS។ ប្រសិនបើត្រូវ bind ទៅ network interface សាធារណៈ ត្រូវកំណត់ `DASHBOARD_TOKEN` ជា random secret វែង ហើយ endpoint manual trigger នឹងទាមទារ `X-Dashboard-Token`។ កុំ commit `.env` ឬ credentials ពិតទៅក្នុង Git repository។
 
 ## Database
 
@@ -84,12 +91,13 @@ Dashboard នឹងបើកតាម `http://localhost:8080`។ សម្រា
 
 | ឯកសារ | តួនាទី |
 |---|---|
-| `news.py` | Worker, RSS ingestion, AI summarization, poster generation និង publishing |
+| `news.py` | Worker, RSS ingestion, AI summarization, poster/reel generation, Khmer voice-over និង publishing |
 | `dashboard.html` | Live monitoring dashboard |
 | `SUPABASE_SCHEMA.sql` | Database tables និង indexes |
 | `requirements.txt` | Python dependencies |
 | `Battambang-Bold.ttf` | Khmer font សម្រាប់ poster |
-| `logo.png` | Project logo សម្រាប់ poster |
+| `logo.png` | Project logo សម្រាប់ poster និង reel |
+| `tests/test_project.py` | Regression tests សម្រាប់ source, security និង media workflow |
 
 ## License
 
