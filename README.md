@@ -34,7 +34,7 @@
 - Feedparser និង BeautifulSoup4
 - Pillow សម្រាប់ poster generation
 - FFmpeg សម្រាប់ reel rendering និង audio/video muxing
-- OpenAI Speech API សម្រាប់ Khmer voice-over
+- Gemini TTS API (`gemini-3.1-flash-tts-preview`) សម្រាប់ Khmer voice-over
 
 ## ដំឡើង និងដំណើរការ
 
@@ -68,9 +68,8 @@ MAX_ARTICLE_BYTES=2097152
 MAX_FEED_BYTES=4194304
 MAX_REEL_BYTES=52428800
 MEDIA_MODE=reel
-OPENAI_API_KEY=your_openai_api_key
-TTS_MODEL=gpt-4o-mini-tts
-TTS_VOICE=alloy
+GEMINI_TTS_MODEL=gemini-3.1-flash-tts-preview
+TTS_VOICE=Kore
 FONT_PATH=Battambang-Bold.ttf
 LOGO_PATH=logo.png
 ```
@@ -81,7 +80,7 @@ LOGO_PATH=logo.png
 python3 news.py
 ```
 
-Dashboard នឹងបើកតាម `http://localhost:8080`។ Reel mode ត្រូវការ `ffmpeg` នៅក្នុង system និង `OPENAI_API_KEY`។ `MEDIA_MODE=reel` នឹងព្យាយាមបង្កើត Khmer voice-over និង publish MP4 ទៅ Facebook Reels/Telegram video; បើមិនអាចបង្កើតបាន វានឹង fallback ទៅ poster ដោយស្វ័យប្រវត្តិ។ សម្រាប់ production គួររក្សា `DASHBOARD_HOST=127.0.0.1` ហើយដាក់ dashboard នៅពីក្រោយ reverse proxy/TLS។ ប្រសិនបើត្រូវ bind ទៅ network interface សាធារណៈ ត្រូវកំណត់ `DASHBOARD_TOKEN` ជា random secret វែង ហើយ endpoint manual trigger នឹងទាមទារ `X-Dashboard-Token`។ កុំ commit `.env` ឬ credentials ពិតទៅក្នុង Git repository។
+Dashboard នឹងបើកតាម `http://localhost:8080`។ Reel mode ត្រូវការ `ffmpeg` នៅក្នុង system និង `GEMINI_API_KEY`។ `MEDIA_MODE=reel` នឹងព្យាយាមបង្កើត Khmer voice-over និង publish MP4 ទៅ Facebook Reels/Telegram video; បើមិនអាចបង្កើតបាន វានឹង fallback ទៅ poster ដោយស្វ័យប្រវត្តិ។ សម្រាប់ production គួររក្សា `DASHBOARD_HOST=127.0.0.1` ហើយដាក់ dashboard នៅពីក្រោយ reverse proxy/TLS។ ប្រសិនបើត្រូវ bind ទៅ network interface សាធារណៈ ត្រូវកំណត់ `DASHBOARD_TOKEN` ជា random secret វែង ហើយ endpoint manual trigger នឹងទាមទារ `X-Dashboard-Token`។ កុំ commit `.env` ឬ credentials ពិតទៅក្នុង Git repository។
 
 ## Database
 
@@ -91,7 +90,7 @@ Dashboard នឹងបើកតាម `http://localhost:8080`។ Reel mode ត�
 
 | ឯកសារ | តួនាទី |
 |---|---|
-| `news.py` | Worker, RSS ingestion, AI summarization, poster/reel generation, Khmer voice-over និង publishing |
+| `news.py` | Worker, RSS ingestion, Gemini summarization/TTS, poster/reel generation, Khmer voice-over និង publishing |
 | `dashboard.html` | Live monitoring dashboard |
 | `SUPABASE_SCHEMA.sql` | Database tables និង indexes |
 | `requirements.txt` | Python dependencies |

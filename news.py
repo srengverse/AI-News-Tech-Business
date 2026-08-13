@@ -5,6 +5,7 @@
 
 import os
 import asyncio
+import base64
 import json
 import hashlib
 import hmac
@@ -18,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import wave
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -81,9 +83,8 @@ ICT = pytz.timezone('Asia/Phnom_Penh')
 FONT_PATH = Path(os.getenv("FONT_PATH", str(BASE_DIR / "Battambang-Bold.ttf"))).expanduser()
 LOGO_PATH = Path(os.getenv("LOGO_PATH", str(BASE_DIR / "logo.png"))).expanduser()
 DASHBOARD_TOKEN = os.getenv("DASHBOARD_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-TTS_MODEL = os.getenv("TTS_MODEL", "gpt-4o-mini-tts")
-TTS_VOICE = os.getenv("TTS_VOICE", "alloy")
+GEMINI_TTS_MODEL = os.getenv("GEMINI_TTS_MODEL", "gemini-3.1-flash-tts-preview")
+TTS_VOICE = os.getenv("TTS_VOICE", "Kore")
 MEDIA_MODE = os.getenv("MEDIA_MODE", "reel").lower()
 if MEDIA_MODE not in {'reel', 'poster'}:
     MEDIA_MODE = 'poster'
@@ -161,8 +162,8 @@ def check_environment():
         logging.warning("Telegram publishing is disabled; Facebook-only mode is active")
     if not DASHBOARD_TOKEN:
         logging.warning("DASHBOARD_TOKEN is not configured; manual trigger endpoint is unauthenticated")
-    if MEDIA_MODE == 'reel' and not OPENAI_API_KEY:
-        logging.warning("MEDIA_MODE=reel but OPENAI_API_KEY is missing; poster fallback is active")
+    if MEDIA_MODE == 'reel' and not GEMINI_API_KEYS:
+        logging.warning("MEDIA_MODE=reel but GEMINI_API_KEY is missing; poster fallback is active")
     if MEDIA_MODE == 'reel' and not shutil.which('ffmpeg'):
         logging.warning("MEDIA_MODE=reel but ffmpeg is unavailable; poster fallback is active")
     logging.info(f" Environment verified. Gemini Keys: {len(GEMINI_API_KEYS)}")
@@ -541,8 +542,8 @@ def build_khmer_narration(article: dict) -> str:
 class ReelService:
     @staticmethod
     async def generate_voiceover(article: dict) -> Optional[bytes]:
-        if not OPENAI_API_KEY:
-            logging.warning("OPENAI_API_KEY is not configured; reel voice-over is disabled")
+        if not GEMINI_API_KEYS:
+            logging.warning("GEMINI_API_KEY is not configured; reel voice-over is disabled")
             return None
         script = build_khmer_narration(article)
         if not script:
@@ -550,30 +551,47 @@ class ReelService:
         instructions = (
             "Speak in Khmer with a clear Cambodian news-presenter voice. "
             "Use a warm, professional and factual tone, with natural pauses and steady pacing. "
-            "Read only the Khmer script after the colon; do not translate or add commentary:"
+            "Read the Khmer script exactly and do not translate or add commentary."
         )
         payload = {
-            'model': TTS_MODEL,
-            'voice': TTS_VOICE,
-            'input': script,
-            'response_format': 'mp3',
-            'instructions': instructions,
+            'model': GEMINI_TTS_MODEL,
+            'input': f"{instructions}: {script}",
+            'response_format': {'type': 'audio'},
+            'generation_config': {'speech_config': [{'voice': TTS_VOICE}]},
         }
         try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            headers = {'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}
+            key = gemini_manager.get_key()
+            timeout = aiohttp.ClientTimeout(total=90)
+            headers = {'x-goog-api-key': key, 'Content-Type': 'application/json'}
             async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post('https://api.openai.com/v1/audio/speech', headers=headers, json=payload) as response:
+                async with session.post('https://generativelanguage.googleapis.com/v1beta/interactions', headers=headers, json=payload) as response:
                     if response.status != 200:
-                        logging.warning("TTS request failed with HTTP %s", response.status)
+                        if response.status == 429:
+                            gemini_manager.mark_failed()
+                        logging.warning("Gemini TTS request failed with HTTP %s", response.status)
                         return None
-                    audio = await response.content.read(MAX_REEL_BYTES)
-                    if not audio:
+                    result = await response.json(content_type=None)
+                    encoded_audio = ((result.get('output_audio') or {}).get('data'))
+                    if not encoded_audio:
+                        logging.warning("Gemini TTS returned no audio data")
                         return None
-                    return audio
-        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as exc:
-            logging.warning("Khmer voice-over generation failed: %s", exc)
+                    pcm = base64.b64decode(encoded_audio, validate=True)
+                    if not pcm or len(pcm) > MAX_REEL_BYTES:
+                        return None
+                    return ReelService.pcm_to_wav(pcm)
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ValueError) as exc:
+            logging.warning("Khmer Gemini voice-over generation failed: %s", exc)
             return None
+
+    @staticmethod
+    def pcm_to_wav(pcm: bytes, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2) -> bytes:
+        output = io.BytesIO()
+        with wave.open(output, 'wb') as wav_file:
+            wav_file.setnchannels(channels)
+            wav_file.setsampwidth(sample_width)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm)
+        return output.getvalue()
 
     @staticmethod
     async def render(poster_bytes: bytes, voiceover: bytes) -> Optional[bytes]:
@@ -583,7 +601,7 @@ class ReelService:
         try:
             with tempfile.TemporaryDirectory(prefix='aitb-reel-', dir=BASE_DIR) as temp_dir:
                 poster_path = Path(temp_dir) / 'poster.jpg'
-                audio_path = Path(temp_dir) / 'voiceover.mp3'
+                audio_path = Path(temp_dir) / 'voiceover.wav'
                 output_path = Path(temp_dir) / 'reel.mp4'
                 poster_path.write_bytes(poster_bytes)
                 audio_path.write_bytes(voiceover)
@@ -867,7 +885,7 @@ async def worker():
                             poster = await ImageService.generate_poster(img_data, final['title_kh'], final['source'], final.get('sentiment')=='Negative', cat)
 
                             reel = None
-                            if MEDIA_MODE == 'reel' and OPENAI_API_KEY:
+                            if MEDIA_MODE == 'reel' and GEMINI_API_KEYS:
                                 voiceover = await ReelService.generate_voiceover(final)
                                 reel = await ReelService.render(poster, voiceover) if voiceover else None
                             if reel:

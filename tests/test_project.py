@@ -47,7 +47,9 @@ class ProjectSmokeTests(unittest.TestCase):
         for name in ("build_khmer_narration", "generate_voiceover", "render", "post_facebook_reel", "post_telegram_video"):
             self.assertIn(name, self.source_text)
         self.assertIn("MEDIA_MODE", self.source_text)
-        self.assertIn("OPENAI_API_KEY", self.source_text)
+        self.assertIn("GEMINI_TTS_MODEL", self.source_text)
+        self.assertIn("GEMINI_API_KEYS", self.source_text)
+        self.assertNotIn("OPENAI_API_KEY", self.source_text)
         self.assertIn("ffmpeg", self.source_text)
         self.assertIn("Speak in Khmer", self.source_text)
 
