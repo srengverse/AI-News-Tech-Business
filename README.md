@@ -90,6 +90,105 @@ Project នេះមាន `Dockerfile`, `render.yaml` និង `.dockerignore`
 
 Health check ប្រើ `GET /`។ Dashboard នឹងមាននៅ URL ដែល Render ផ្ដល់ឲ្យ ហើយ manual trigger ត្រូវប្រើ header `X-Dashboard-Token` ប្រសិនបើ `DASHBOARD_TOKEN` ត្រូវបានកំណត់។ Render Free instance អាច sleep និងមិនសមស្របសម្រាប់ background news worker ដែលត្រូវរត់ជាប់ជានិច្ច; គួរប្រើ instance ដែលមិន sleep សម្រាប់ production និងពិនិត្យ logs បន្ទាប់ពី deploy។
 
+## Dashboard User Guide
+
+Dashboard គឺជា web interface សម្រាប់តាមដានស្ថានភាព news worker និងស្ថិតិអត្ថបទដែលបានរក្សាទុកក្នុង Supabase។ នៅ local វាបើកតាម `http://127.0.0.1:8080`។ នៅ Render សូមបើក URL ដែល Render ផ្ដល់ឲ្យ។ Dashboard អាចបង្ហាញចំនួនអត្ថបទសរុប, ចំនួនអត្ថបទថ្ងៃនេះ, ចំនួនអត្ថបទក្នុង ៧ ថ្ងៃចុងក្រោយ, publishing success count, category counts និង recent posts។
+
+បន្ទាប់ពីចូល Dashboard អ្នកអាចចុច **Refresh** ដើម្បីទាញស្ថិតិថ្មីពី server ឬចុច **Run Scan Now** ដើម្បីកំណត់ worker ឲ្យចាប់ផ្តើមស្កេន RSS មុនពេលវដ្តបន្ទាប់។ ប៊ូតុង manual scan មិនបង្ហាញ secret ក្នុង browser ទេ; ប្រសិនបើ `DASHBOARD_TOKEN` ត្រូវបានកំណត់ សូមប្រើ API example ខាងក្រោមសម្រាប់ manual trigger ពី command line។
+
+### Dashboard Security
+
+សម្រាប់ local development អាចទុក `DASHBOARD_HOST=127.0.0.1`។ សម្រាប់ Render ត្រូវប្រើ `DASHBOARD_HOST=0.0.0.0` ដើម្បីឲ្យ platform health check និង browser access បាន។ ក្នុង production ត្រូវកំណត់ `DASHBOARD_TOKEN` ជា random secret វែង ហើយដាក់ Dashboard នៅពីក្រោយ HTTPS។ Endpoint `/api/stats` គឺសម្រាប់អានស្ថិតិ ខណៈ `/api/trigger` គឺជាការបញ្ជាឲ្យ worker ស្កេន RSS ដូច្នេះកុំបើកវាជាសាធារណៈដោយគ្មាន token។
+
+## Dashboard API Documentation
+
+Base URL គឺជា `http://127.0.0.1:8080` ក្នុង local ឬ Render service URL ក្នុង production។ API ប្រើ JSON ហើយមិនមាន public API versioning នៅពេលនេះ។ Response errors មិនបញ្ចេញ internal exception details ដើម្បីការពារ operational information។
+
+| Method | Endpoint | Authentication | Purpose |
+|---|---|---|---|
+| `GET` | `/` | None | បើក Dashboard HTML |
+| `GET` | `/api/stats` | None | ទាញស្ថិតិ និង recent posts |
+| `POST` | `/api/trigger` | `X-Dashboard-Token` ប្រសិនបើបានកំណត់ | កំណត់ manual RSS scan |
+
+### `GET /api/stats`
+
+Endpoint នេះទាញស្ថិតិពី `posted_articles` ក្នុង Supabase។ ឧទាហរណ៍ request៖
+
+```bash
+curl -sS https://YOUR-RENDER-SERVICE.onrender.com/api/stats
+```
+
+Response ជោគជ័យមានទម្រង់ប្រហាក់ប្រហែលនេះ៖
+
+```json
+{
+  "total_all": 42,
+  "total_today": 5,
+  "total_week": 19,
+  "success_count": 5,
+  "recent_posts": [
+    {
+      "id": "...",
+      "title": "Article title",
+      "posted_at": "2026-08-13T08:00:00+00:00",
+      "facebook": false,
+      "telegram": true,
+      "source": "Khmer Times Business",
+      "category": "business",
+      "link": "https://example.com/article"
+    }
+  ],
+  "category_counts": {
+    "finance": 2,
+    "technology": 2,
+    "business": 1
+  },
+  "timestamp": "2026-08-13T15:00:00+07:00"
+}
+```
+
+`total_all` គឺចំនួន records ទាំងអស់, `total_today` គឺចំនួន records ចាប់ពីម៉ោង 00:00 តាម Asia/Phnom Penh, `total_week` គឺចំនួនក្នុង ៧ ថ្ងៃចុងក្រោយ និង `success_count` គឺចំនួនអត្ថបទថ្ងៃនេះដែលបានបង្ហោះទៅ Facebook ឬ Telegram យ៉ាងហោចណាស់មួយ channel។ `category_counts` រាប់ Finance, Technology និង Business សម្រាប់ថ្ងៃនេះ។ `recent_posts` ត្រឡប់តែ ១០ records ចុងក្រោយ ដើម្បីកាត់បន្ថយ payload។
+
+ប្រសិនបើ Supabase query បរាជ័យ endpoint នឹងត្រឡប់៖
+
+```json
+{
+  "error": "Unable to load dashboard statistics"
+}
+```
+
+ជាមួយ HTTP status `500`។
+
+### `POST /api/trigger`
+
+Endpoint នេះកំណត់ internal event ឲ្យ worker ចាប់ផ្តើម scan cycle។ វាមិនរង់ចាំឲ្យ RSS processing បញ្ចប់ទេ ដូច្នេះ response `triggered` មានន័យថា scan ត្រូវបានកំណត់ឲ្យដំណើរការ មិនមែនមានន័យថាការបង្ហោះបានបញ្ចប់ទេ។
+
+ប្រសិនបើ `DASHBOARD_TOKEN` ត្រូវបានកំណត់៖
+
+```bash
+curl -sS -X POST \
+  -H "X-Dashboard-Token: ${DASHBOARD_TOKEN}" \
+  https://YOUR-RENDER-SERVICE.onrender.com/api/trigger
+```
+
+Response ជោគជ័យ៖
+
+```json
+{"status":"triggered"}
+```
+
+បើ token ខុស ឬបាត់ នឹងទទួល៖
+
+```json
+{"error":"Unauthorized"}
+```
+
+ជាមួយ HTTP status `401`។ ប្រសិនបើ `DASHBOARD_TOKEN` មិនបានកំណត់ endpoint នេះមិនទាមទារ token ប៉ុន្តែវា **មិនសុវត្ថិភាពសម្រាប់ public deployment** ទេ; ត្រូវកំណត់ token មុន deploy production។
+
+### Health Check និង Troubleshooting
+
+Render ប្រើ `GET /` ជា health check។ ប្រសិនបើ service បើកមិនបាន សូមពិនិត្យថា `DASHBOARD_HOST=0.0.0.0`, `PORT` មិនត្រូវបាន hard-code ជំនួស Render port, និង Docker container ចាប់ផ្តើមដោយ `python news.py`។ ប្រសិនបើ Dashboard បើកបាន ប៉ុន្តែ `/api/stats` ត្រឡប់ `500`, សូមពិនិត្យ `SUPABASE_URL`, `SUPABASE_KEY`, schema migration និង RLS settings។ ប្រសិនបើ `/api/trigger` ត្រឡប់ `401`, សូមពិនិត្យ header `X-Dashboard-Token` និងតម្លៃ `DASHBOARD_TOKEN` ក្នុង service environment។
+
 ## Database
 
 ដំណើរការ SQL ក្នុង `SUPABASE_SCHEMA.sql` តាម Supabase SQL Editor មុនពេល run bot។ Schema រក្សាទុកអត្ថបទដែលបានបង្ហោះ និង retry queue សម្រាប់កំហុសដែលអាចកើតមាន។ Migration នឹងបន្ថែម `category` និង `link` ទៅ table ចាស់ដោយសុវត្ថិភាព ហើយបើក Row Level Security ដើម្បីបិទ anonymous/public database access។
