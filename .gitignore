@@ -37,3 +37,9 @@ serviceAccountKey.json
 
 # Cache
 image_cache/
+
+# Local demo reel outputs (reproducible, not source code)
+demo_reel_background.png
+demo_reel_poster.jpg
+demo_reel_voiceover.wav
+demo_reel_khmer_voiceover.mp4
