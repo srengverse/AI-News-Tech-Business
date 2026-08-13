@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.*
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+image_cache
+*.log
+nohup.out
+bot.log
+demo_reel_background.png
+demo_reel_poster.jpg
+demo_reel_voiceover.wav
+demo_reel_khmer_voiceover.mp4

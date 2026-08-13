@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: ai-news-tech-business
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: DASHBOARD_HOST
+        value: 0.0.0.0
+      - key: MEDIA_MODE
+        value: reel
+      - key: GEMINI_TTS_MODEL
+        value: gemini-3.1-flash-tts-preview
+      - key: TTS_VOICE
+        value: Kore
+      - key: REQUEST_TIMEOUT_SECONDS
+        value: "15"
+      - key: MAX_REEL_BYTES
+        value: "52428800"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHANNEL_ID
+        sync: false
+      - key: FACEBOOK_PAGE_ID
+        sync: false
+      - key: FACEBOOK_ACCESS_TOKEN
+        sync: false
+      - key: DASHBOARD_TOKEN
+        sync: false

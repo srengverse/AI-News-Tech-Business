@@ -82,6 +82,14 @@ python3 news.py
 
 Dashboard នឹងបើកតាម `http://localhost:8080`។ Reel mode ត្រូវការ `ffmpeg` នៅក្នុង system និង `GEMINI_API_KEY`។ `MEDIA_MODE=reel` នឹងព្យាយាមបង្កើត Khmer voice-over និង publish MP4 ទៅ Facebook Reels/Telegram video; បើមិនអាចបង្កើតបាន វានឹង fallback ទៅ poster ដោយស្វ័យប្រវត្តិ។ សម្រាប់ production គួររក្សា `DASHBOARD_HOST=127.0.0.1` ហើយដាក់ dashboard នៅពីក្រោយ reverse proxy/TLS។ ប្រសិនបើត្រូវ bind ទៅ network interface សាធារណៈ ត្រូវកំណត់ `DASHBOARD_TOKEN` ជា random secret វែង ហើយ endpoint manual trigger នឹងទាមទារ `X-Dashboard-Token`។ កុំ commit `.env` ឬ credentials ពិតទៅក្នុង Git repository។
 
+## Render.com Deployment
+
+Project នេះមាន `Dockerfile`, `render.yaml` និង `.dockerignore` សម្រាប់ deploy ទៅ Render។ Blueprint ប្រើ **Web Service តែមួយ** ដែល run ទាំង dashboard និង RSS worker ក្នុង process ដូចគ្នា ដើម្បីកុំឲ្យមាន worker ពីរបង្ហោះព័ត៌មានស្ទួន។ Render នឹង inject `PORT` ដោយស្វ័យប្រវត្តិ ហើយ `DASHBOARD_HOST=0.0.0.0` ត្រូវបានកំណត់ក្នុង `render.yaml` សម្រាប់ health check និង public dashboard។
+
+ក្នុង Render Dashboard ជ្រើស **New > Blueprint**, ភ្ជាប់ repository `srengverse/AI-News-Tech-Business` និងជ្រើស branch `main`។ Render នឹងអាន `render.yaml` ហើយបង្កើត service ដោយស្វ័យប្រវត្តិ។ បំពេញ secret environment variables ដែលមាន `sync: false` ដោយផ្ទាល់ក្នុង Render: `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, `DASHBOARD_TOKEN` និង Facebook credentials ប្រសិនបើត្រូវការ Facebook publishing។ កុំ commit `.env` ឬ credentials ទៅ GitHub។
+
+Health check ប្រើ `GET /`។ Dashboard នឹងមាននៅ URL ដែល Render ផ្ដល់ឲ្យ ហើយ manual trigger ត្រូវប្រើ header `X-Dashboard-Token` ប្រសិនបើ `DASHBOARD_TOKEN` ត្រូវបានកំណត់។ Render Free instance អាច sleep និងមិនសមស្របសម្រាប់ background news worker ដែលត្រូវរត់ជាប់ជានិច្ច; គួរប្រើ instance ដែលមិន sleep សម្រាប់ production និងពិនិត្យ logs បន្ទាប់ពី deploy។
+
 ## Database
 
 ដំណើរការ SQL ក្នុង `SUPABASE_SCHEMA.sql` តាម Supabase SQL Editor មុនពេល run bot។ Schema រក្សាទុកអត្ថបទដែលបានបង្ហោះ និង retry queue សម្រាប់កំហុសដែលអាចកើតមាន។ Migration នឹងបន្ថែម `category` និង `link` ទៅ table ចាស់ដោយសុវត្ថិភាព ហើយបើក Row Level Security ដើម្បីបិទ anonymous/public database access។
@@ -94,6 +102,9 @@ Dashboard នឹងបើកតាម `http://localhost:8080`។ Reel mode ត�
 | `dashboard.html` | Live monitoring dashboard |
 | `SUPABASE_SCHEMA.sql` | Database tables និង indexes |
 | `requirements.txt` | Python dependencies |
+| `Dockerfile` | Render production container with FFmpeg |
+| `render.yaml` | Render Blueprint និង environment variable placeholders |
+| `.dockerignore` | ការពារ secrets/cache/demo artifacts ពេល build image |
 | `Battambang-Bold.ttf` | Khmer font សម្រាប់ poster |
 | `logo.png` | Project logo សម្រាប់ poster និង reel |
 | `tests/test_project.py` | Regression tests សម្រាប់ source, security និង media workflow |
