@@ -43,6 +43,12 @@ class ProjectSmokeTests(unittest.TestCase):
             self.assertRegex(self.source_text, rf'"{category}"\s*:\s*\[')
         self.assertEqual(len(re.findall(r'\{"name":', self.source_text)), 16)
 
+    def test_image_payload_validation_is_present(self):
+        for marker in ("validate_image_bytes", "LOAD_TRUNCATED_IMAGES", "candidate.verify()", "decoded.load()", "MAX_IMAGE_BYTES"):
+            self.assertIn(marker, self.source_text)
+        self.assertIn("empty image payload", self.source_text)
+        self.assertIn("invalid or truncated image", self.source_text)
+
     def test_reel_voiceover_pipeline_is_present(self):
         for name in ("build_khmer_narration", "generate_voiceover", "render", "post_facebook_reel", "post_telegram_video"):
             self.assertIn(name, self.source_text)

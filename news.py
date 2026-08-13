@@ -38,12 +38,16 @@ try:
     from google import genai
     from google.genai import types
     from aiohttp import web, FormData
-    from PIL import Image, ImageDraw, ImageFont, ImageEnhance
+    from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFile, UnidentifiedImageError
     from supabase import create_client, Client
 except ImportError as e:
     print(f" Missing dependency: {e}")
     print(" Please run: pip install -r requirements.txt")
     exit(1)
+
+# Keep Pillow from accepting truncated images or extremely large decompression payloads.
+ImageFile.LOAD_TRUNCATED_IMAGES = False
+Image.MAX_IMAGE_PIXELS = 20_000_000
 
 # ===========================  CONFIGURATION ===========================
 BASE_DIR = Path(__file__).resolve().parent
@@ -337,6 +341,38 @@ def is_relevant_business_news(article: dict) -> bool:
 # ===========================  SERVICES ===========================
 class ImageService:
     @staticmethod
+    def validate_image_bytes(data: Optional[bytes], *, source: str = "image", content_type: str = "") -> bool:
+        """Validate image bytes before caching, poster generation, or video rendering."""
+        if not isinstance(data, (bytes, bytearray)) or not data:
+            logging.warning("Rejected %s: empty image payload", source)
+            return False
+        if len(data) > MAX_IMAGE_BYTES:
+            logging.warning("Rejected %s: image payload exceeds %d bytes", source, MAX_IMAGE_BYTES)
+            return False
+        if content_type and not (content_type.startswith('image/') or content_type == 'application/octet-stream'):
+            logging.warning("Rejected %s: unexpected content type %s", source, content_type)
+            return False
+        try:
+            # verify() checks headers/structure without decoding pixels.
+            with Image.open(io.BytesIO(data)) as candidate:
+                image_format = (candidate.format or '').upper()
+                if image_format not in {'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'TIFF'}:
+                    logging.warning("Rejected %s: unsupported image format %s", source, image_format or 'unknown')
+                    return False
+                if candidate.width <= 0 or candidate.height <= 0:
+                    logging.warning("Rejected %s: invalid image dimensions", source)
+                    return False
+                candidate.verify()
+            # Decode the pixels too; this catches truncated/corrupt payloads
+            # that can pass header verification alone.
+            with Image.open(io.BytesIO(data)) as decoded:
+                decoded.load()
+            return True
+        except (OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+            logging.warning("Rejected %s: invalid or truncated image (%s)", source, exc)
+            return False
+
+    @staticmethod
     async def download(url: str) -> Optional[bytes]:
         if not is_safe_public_url(url):
             logging.warning("Blocked unsafe image URL")
@@ -347,10 +383,11 @@ class ImageService:
             mtime = datetime.fromtimestamp(os.path.getmtime(cache_path))
             if datetime.now() - mtime < timedelta(hours=CACHE_EXPIRY_HOURS):
                 try:
-                    with Image.open(cache_path) as cached:
-                        cached.verify()
                     with open(cache_path, 'rb') as f:
-                        return f.read()
+                        cached_data = f.read()
+                    if ImageService.validate_image_bytes(cached_data, source=f"cache:{url}"):
+                        return cached_data
+                    raise ValueError('cached image failed validation')
                 except (OSError, ValueError):
                     try:
                         os.remove(cache_path)
@@ -369,7 +406,7 @@ class ImageService:
                     if resp.content_length and resp.content_length > MAX_IMAGE_BYTES:
                         return None
                     data = await resp.content.read(MAX_IMAGE_BYTES + 1)
-                    if len(data) > MAX_IMAGE_BYTES:
+                    if not ImageService.validate_image_bytes(data, source=url, content_type=content_type):
                         return None
                     with open(cache_path, 'wb') as f:
                         f.write(data)
@@ -384,7 +421,7 @@ class ImageService:
         title = str(title or "News")[:240]
         source = str(source or "Unknown")[:120]
         try:
-            if image_bytes:
+            if image_bytes and ImageService.validate_image_bytes(image_bytes, source='poster-input'):
                 img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
                 # Smart Crop
                 aspect = img.width / img.height
